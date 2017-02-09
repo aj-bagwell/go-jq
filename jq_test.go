@@ -93,6 +93,25 @@ func TestTransformArrayJson(t *testing.T) {
 	equals(t, false, jq.Next())
 }
 
+func TestTransformArrayJsonString(t *testing.T) {
+	jq, err := NewJQ(".[]")
+	ok(t, err)
+	defer jq.Close()
+
+	jq.HandleJson("[1, 2, 3]")
+
+	equals(t, true, jq.Next())
+	equals(t, "1", jq.ValueJson())
+
+	equals(t, true, jq.Next())
+	equals(t, "2", jq.ValueJson())
+
+	equals(t, true, jq.Next())
+	equals(t, "3", jq.ValueJson())
+
+	equals(t, false, jq.Next())
+}
+
 // TODO KIND_INVALID
 
 func assertJsonParsed(t *testing.T, expected interface{}, json string) {

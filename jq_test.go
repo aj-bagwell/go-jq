@@ -98,6 +98,7 @@ func TestTransformArrayJsonString(t *testing.T) {
 	ok(t, err)
 	defer jq.Close()
 
+<<<<<<< HEAD
 	jq.HandleJson("[[1], [2], [3]]")
 
 	equals(t, true, jq.Next())
@@ -108,6 +109,18 @@ func TestTransformArrayJsonString(t *testing.T) {
 
 	equals(t, true, jq.Next())
 	equals(t, "[3]", jq.ValueJson())
+=======
+	jq.HandleJson("[1, 2, 3]")
+
+	equals(t, true, jq.Next())
+	equals(t, "1", jq.ValueJson())
+
+	equals(t, true, jq.Next())
+	equals(t, "2", jq.ValueJson())
+
+	equals(t, true, jq.Next())
+	equals(t, "3", jq.ValueJson())
+>>>>>>> e351bdc... Fix Segmentation Fault when used ValueJson function.
 
 	equals(t, false, jq.Next())
 }

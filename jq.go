@@ -11,14 +11,15 @@ import (
 )
 
 type JQ struct {
-	program   string
-	state     *C.jq_state
-	lastValue C.jv
+	program    string
+	state      *C.jq_state
+	lastValue  C.jv
+	prevRefCnt int
 }
 
 func NewJQ(program string) (*JQ, error) {
 	state := C.jq_init()
-	jq := &JQ{program, state, C.jv_invalid()}
+	jq := &JQ{program, state, C.jv_invalid(), 0}
 	if err := jq.compile(program); err != nil {
 		jq.Close()
 		return nil, err
@@ -42,9 +43,12 @@ func (jq *JQ) HandleJson(text string) error {
 }
 
 func (jq *JQ) Next() bool {
-	// FIXME this raises assertion if called before start()
-	freeJv(jq.lastValue)
+	// jq.ValueJson() is self execute internally (jv_dump_term in the jv_dump_string)
+	if jq.prevRefCnt == jq.jv_get_refcnt() {
+		freeJv(jq.lastValue)
+	}
 	jq.lastValue = jq.next()
+	jq.prevRefCnt = jq.jv_get_refcnt()
 	return isValid(jq.lastValue)
 }
 
@@ -81,6 +85,10 @@ func (jq *JQ) next() C.jv {
 
 func (jq *JQ) teardown() {
 	C.jq_teardown(&jq.state)
+}
+
+func (jq *JQ) jv_get_refcnt() int {
+	return (int)(C.jv_get_refcnt(jq.lastValue))
 }
 
 // JSON values

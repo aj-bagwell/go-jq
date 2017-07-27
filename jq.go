@@ -30,8 +30,15 @@ func (jq *JQ) Handle(value interface{}) {
 	jq.start(goToJv(value))
 }
 
-func (jq *JQ) HandleJson(text string) {
-	jq.start(parseJson(text))
+func (jq *JQ) HandleJson(text string) error {
+	jv, err := parseJson(text)
+
+	if err == nil {
+		jq.start(jv)
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (jq *JQ) Next() bool {
@@ -78,8 +85,12 @@ func (jq *JQ) teardown() {
 
 // JSON values
 
-func parseJson(value string) C.jv {
-	return C.jv_parse(C.CString(value))
+func parseJson(value string) (C.jv, error) {
+	v := C.jv_parse(C.CString(value))
+	if C.jv_is_valid(v) == 0 {
+		return C.jv_null(), errors.New("Invalid JSON")
+	}
+	return v, nil
 }
 
 func dumpJson(jv C.jv) string {

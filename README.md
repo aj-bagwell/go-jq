@@ -1,6 +1,7 @@
 # JQ bindings for Go
 
-**this project's PR is fix, please use original: [mgood/go-jq](https://github.com/mgood/go-jq)**
+**The original repo doesn't move much: [mgood/go-jq](https://github.com/mgood/go-jq)**
+**Here we merge the various fixes.
 
 This library implements bindings to the "jq" JSON processor from Go:
 

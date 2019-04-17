@@ -62,6 +62,16 @@ func (jq *JQ) ValueJson() string {
 	return dumpJson(jq.lastValue)
 }
 
+func (jq *JQ) ValueString() string {
+	if C.jv_get_kind(jq.lastValue) == C.JV_KIND_STRING {
+		result := C.GoString(C.jv_string_value(jq.lastValue))
+		freeJv(jq.lastValue)
+		return result
+	} else {
+		return dumpJson(jq.lastValue)
+	}
+}
+
 func (jq *JQ) Close() {
 	freeJv(jq.lastValue)
 	jq.lastValue = C.jv_invalid()

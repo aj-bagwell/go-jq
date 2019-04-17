@@ -3,11 +3,13 @@ package jq
 // #cgo LDFLAGS: -ljq
 // #include <jq.h>
 // #include <jv.h>
+// #include <stdlib.h>
 import "C"
 import (
 	"errors"
 	"fmt"
 	"reflect"
+	"unsafe"
 )
 
 type JQ struct {
@@ -61,13 +63,16 @@ func (jq *JQ) ValueJson() string {
 }
 
 func (jq *JQ) Close() {
-	jq.teardown()
 	freeJv(jq.lastValue)
+	jq.lastValue = C.jv_invalid()
+	jq.teardown()
 }
 
 // JQ APIs
 
 func (jq *JQ) compile(program string) error {
+	cs := C.CString(program)
+	defer C.free(unsafe.Pointer(cs))
 	if rc := C.jq_compile(jq.state, C.CString(program)); rc == 0 {
 		return errors.New("Unable to compile jq filter")
 	} else {
@@ -94,23 +99,32 @@ func (jq *JQ) jv_get_refcnt() int {
 // JSON values
 
 func parseJson(value string) (C.jv, error) {
-	v := C.jv_parse(C.CString(value))
+	cs := C.CString(value)
+	v := C.jv_parse(cs)
 	if C.jv_is_valid(v) == 0 {
 		return C.jv_null(), errors.New("Invalid JSON")
 	}
+	C.free(unsafe.Pointer(cs))
 	return v, nil
 }
 
 func dumpJson(jv C.jv) string {
-	jv = C.jv_copy(jv)
 	strJv := C.jv_dump_string(jv, 0)
-	result := C.jv_string_value(strJv)
+	cresult := C.jv_string_value(strJv)
+	result := C.GoString(cresult)
 	freeJv(strJv)
-	return C.GoString(result)
+	return result
 }
 
 func refcount(jv C.jv) int {
 	return int(C.jv_get_refcnt(jv))
+}
+
+func jvString(value string) C.jv {
+	cs := C.CString(value)
+	result := C.jv_string(cs)
+	C.free(unsafe.Pointer(cs))
+	return result
 }
 
 func goToJv(v interface{}) C.jv {
@@ -135,13 +149,13 @@ func goToJv(v interface{}) C.jv {
 	case reflect.Float32, reflect.Float64:
 		return C.jv_number(C.double(value.Float()))
 	case reflect.String:
-		return C.jv_string(C.CString(value.String()))
+		return jvString(value.String())
 	case reflect.Array, reflect.Slice:
 		n := value.Len()
 		arr := C.jv_array_sized(C.int(n))
 		for i := 0; i < n; i++ {
 			item := goToJv(value.Index(i).Interface())
-			arr = C.jv_array_set(C.jv_copy(arr), C.int(i), item)
+			arr = C.jv_array_set(arr, C.int(i), item)
 		}
 		return arr
 	case reflect.Map:
@@ -157,7 +171,8 @@ func goToJv(v interface{}) C.jv {
 
 	msg := fmt.Sprintf("unknown type for: %v", value.Interface())
 
-	return C.jv_invalid_with_msg(C.jv_string(C.CString(msg)))
+	return C.jv_invalid_with_msg(jvString(msg))
+}
 }
 
 func jvToGo(value C.jv) interface{} {
